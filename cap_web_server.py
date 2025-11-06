@@ -67,6 +67,7 @@ HTML_PAGE = """
     }
     header h1 { margin: 0; font-size: 22px; }
     header h2 { margin: 4px 0 0 0; font-size: 14px; font-weight: normal; opacity: 0.9; }
+
     .container { max-width: 1100px; margin: 15px auto 25px auto; padding: 0 10px; }
     .flex-row { display: flex; flex-wrap: wrap; gap: 15px; }
     .left, .right { box-sizing: border-box; }
@@ -82,6 +83,31 @@ HTML_PAGE = """
       border-radius: 4px;
       margin-bottom: 10px;
     }
+
+    .legend {
+      background: #ffffff;
+      border-radius: 6px;
+      padding: 6px 8px;
+      font-size: 12px;
+      color: #333;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      margin-bottom: 8px;
+      display: inline-block;
+    }
+    .legend-item {
+      margin-right: 10px;
+      display: inline-flex;
+      align-items: center;
+    }
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 4px;
+    }
+    .dot-danger { background: #d32f2f; }
+    .dot-safe { background: #2e7d32; }
 
     #map {
       width: 100%;
@@ -124,6 +150,42 @@ HTML_PAGE = """
     .badge-leve { background: #2e7d32; }
 
     .empty { text-align: center; margin-top: 40px; color: #777; font-size: 14px; }
+
+    /* Sección adicional (mochila + resumen) */
+    .extra-section {
+      max-width: 1100px;
+      margin: 0 auto 25px auto;
+      padding: 0 10px;
+    }
+    .extra-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+    .extra-left, .extra-right {
+      box-sizing: border-box;
+      flex: 1 1 50%;
+      min-width: 280px;
+    }
+    .card-box {
+      background: #ffffff;
+      padding: 12px 15px;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+      font-size: 13px;
+    }
+    .card-box h3 {
+      margin-top: 0;
+      margin-bottom: 6px;
+      color: #2e7d32;
+      font-size: 15px;
+    }
+    .card-box ul {
+      margin: 4px 0 0 16px;
+      padding: 0;
+    }
+    .card-box li { margin-bottom: 3px; }
+
     footer {
       text-align: center;
       font-size: 11px;
@@ -140,15 +202,21 @@ HTML_PAGE = """
 
   <div class="container">
     <div class="info-bar">
-      La página se actualiza automáticamente cada 20 segundos.
-      El marcador <strong>rojo</strong> indica la zona en peligro;
-      los marcadores <strong>verdes</strong> indican las zonas seguras asociadas.
-      En la descripción, usa el texto: "zona segura &lt;nombre del lugar&gt;" para que se marque en el mapa.
+      Representación de mensajes CAP recibidos desde la plataforma SDR.
+      <strong>Rojo:</strong> zona en peligro. <strong>Verde:</strong> zona segura o punto de encuentro.
     </div>
 
     {% if alerts %}
       <div class="flex-row">
         <div class="left">
+          <div class="legend">
+            <span class="legend-item">
+              <span class="dot dot-danger"></span> Zona en peligro
+            </span>
+            <span class="legend-item">
+              <span class="dot dot-safe"></span> Zona segura / punto de encuentro
+            </span>
+          </div>
           <div id="map"></div>
         </div>
         <div class="right">
@@ -183,6 +251,45 @@ HTML_PAGE = """
         (Aún no hay alertas CAP recibidas desde el receptor SDR)
       </div>
     {% endif %}
+  </div>
+
+  <!-- Sección adicional: Mochila de emergencia + Resumen del sistema -->
+  <div class="extra-section">
+    <div class="extra-row">
+      <div class="extra-left">
+        <div class="card-box">
+          <h3>Mochila de emergencia recomendada</h3>
+          <p>Ante terremotos, inundaciones u otros desastres es recomendable contar con una mochila lista para 72 horas. Algunos elementos básicos son:</p>
+          <ul>
+            <li>Agua potable (mínimo 2&nbsp;L por persona por día)</li>
+            <li>Alimentos no perecibles (enlatados, barras energéticas)</li>
+            <li>Linterna y pilas de repuesto</li>
+            <li>Radio portátil a pilas</li>
+            <li>Botiquín de primeros auxilios y medicamentos personales</li>
+            <li>Copias de documentos importantes en bolsa plástica</li>
+            <li>Mascara o pañuelo, gel antibacterial y mascarillas</li>
+            <li>Ropa abrigada, poncho de agua y manta ligera</li>
+            <li>Silbato, encendedor o fósforos resistentes al agua</li>
+          </ul>
+        </div>
+      </div>
+      <div class="extra-right">
+        <div class="card-box">
+          <h3>Resumen del sistema de alertas</h3>
+          <ul>
+            <li><strong>Total de alertas recibidas:</strong> {{ alerts|length }}</li>
+            {% if alerts %}
+              <li><strong>Última zona afectada:</strong> {{ alerts[-1]['area'] }}</li>
+              <li><strong>Último evento:</strong> {{ alerts[-1]['headline'] }}</li>
+              <li><strong>Severidad:</strong> {{ alerts[-1]['severity_es'] }}</li>
+              <li><strong>Urgencia:</strong> {{ alerts[-1]['urgency_es'] }}</li>
+              <li><strong>Fecha y hora de recepción:</strong> {{ alerts[-1]['timestamp'] }}</li>
+            {% endif %}
+          </ul>
+          <p>La información se genera a partir de mensajes CAP transmitidos vía plataformas SDR y procesados en el receptor ISDB-T.</p>
+        </div>
+      </div>
+    </div>
   </div>
 
   <footer>
