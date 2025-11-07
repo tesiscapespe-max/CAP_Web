@@ -149,7 +149,7 @@ HTML_PAGE = """
     .badge-moderada { background: #fbc02d; color: #000; }
     .badge-leve { background: #2e7d32; }
 
-    .empty { text-align: center; margin-top: 40px; color: #777; font-size: 14px; }
+    .empty { font-size: 13px; color: #777; margin-top: 10px; }
 
     /* Sección adicional (mochila + resumen) */
     .extra-section {
@@ -206,20 +206,20 @@ HTML_PAGE = """
       <strong>Rojo:</strong> zona en peligro. <strong>Verde:</strong> zona segura o punto de encuentro.
     </div>
 
-    {% if alerts %}
-      <div class="flex-row">
-        <div class="left">
-          <div class="legend">
-            <span class="legend-item">
-              <span class="dot dot-danger"></span> Zona en peligro
-            </span>
-            <span class="legend-item">
-              <span class="dot dot-safe"></span> Zona segura / punto de encuentro
-            </span>
-          </div>
-          <div id="map"></div>
+    <div class="flex-row">
+      <div class="left">
+        <div class="legend">
+          <span class="legend-item">
+            <span class="dot dot-danger"></span> Zona en peligro
+          </span>
+          <span class="legend-item">
+            <span class="dot dot-safe"></span> Zona segura / punto de encuentro
+          </span>
         </div>
-        <div class="right">
+        <div id="map"></div>
+      </div>
+      <div class="right">
+        {% if alerts %}
           {% for a in alerts|reverse %}
             {% set sev = a['severity_es']|lower %}
             <div class="alert-card severity-{{ sev }}">
@@ -244,13 +244,13 @@ HTML_PAGE = """
               </div>
             </div>
           {% endfor %}
-        </div>
+        {% else %}
+          <div class="empty">
+            (No hay alertas recibidas por el momento. El mapa se actualizará cuando llegue un nuevo mensaje CAP.)
+          </div>
+        {% endif %}
       </div>
-    {% else %}
-      <div class="empty">
-        (Aún no hay alertas CAP recibidas desde el receptor SDR)
-      </div>
-    {% endif %}
+    </div>
   </div>
 
   <!-- Sección adicional: Mochila de emergencia + Resumen del sistema -->
@@ -267,7 +267,7 @@ HTML_PAGE = """
             <li>Radio portátil a pilas</li>
             <li>Botiquín de primeros auxilios y medicamentos personales</li>
             <li>Copias de documentos importantes en bolsa plástica</li>
-            <li>Mascara o pañuelo, gel antibacterial y mascarillas</li>
+            <li>Gel antibacterial, mascarillas y elementos de higiene</li>
             <li>Ropa abrigada, poncho de agua y manta ligera</li>
             <li>Silbato, encendedor o fósforos resistentes al agua</li>
           </ul>
@@ -279,11 +279,19 @@ HTML_PAGE = """
           <ul>
             <li><strong>Total de alertas recibidas:</strong> {{ alerts|length }}</li>
             {% if alerts %}
-              <li><strong>Última zona afectada:</strong> {{ alerts[-1]['area'] }}</li>
+              <li><strong>Lugar de peligro:</strong> {{ alerts[-1]['area'] }}</li>
               <li><strong>Último evento:</strong> {{ alerts[-1]['headline'] }}</li>
               <li><strong>Severidad:</strong> {{ alerts[-1]['severity_es'] }}</li>
               <li><strong>Urgencia:</strong> {{ alerts[-1]['urgency_es'] }}</li>
               <li><strong>Fecha y hora de recepción:</strong> {{ alerts[-1]['timestamp'] }}</li>
+              {% if alerts[-1]['safe_places'] %}
+                <li>
+                  <strong>Lugar(es) seguro(s):</strong>
+                  {% for p in alerts[-1]['safe_places'] %}
+                    {{ p['name'] }}{% if not loop.last %}, {% endif %}
+                  {% endfor %}
+                </li>
+              {% endif %}
             {% endif %}
           </ul>
           <p>La información se genera a partir de mensajes CAP transmitidos vía plataformas SDR y procesados en el receptor ISDB-T.</p>
@@ -296,58 +304,63 @@ HTML_PAGE = """
     Proyecto de titulación - ESPE | Sistema de transmisión y recepción de mensajes CAP sobre plataformas SDR
   </footer>
 
-  {% if alerts %}
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-      crossorigin="">
-    </script>
-    <script>
-      const lastAlert = {{ alerts[-1] | tojson }};
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin="">
+  </script>
+  <script>
+    const alerts = {{ alerts | tojson }};
+    let lastAlert = null;
+    if (alerts.length > 0) {
+      lastAlert = alerts[alerts.length - 1];
+    }
 
-      function initMapLeaflet() {
-        let center = [-1.0, -78.5];  // centro por defecto (Ecuador aprox)
+    function initMapLeaflet() {
+      // Centro por defecto (Ecuador aprox)
+      let center = [-1.0, -78.5];
+      let zoom = 6;
 
-        if (lastAlert.lat && lastAlert.lng) {
-          center = [lastAlert.lat, lastAlert.lng];
-        }
-
-        const map = L.map('map').setView(center, 12);
-
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          maxZoom: 19,
-          attribution: '&copy; OpenStreetMap contributors'
-        }).addTo(map);
-
-        // Marcador rojo: zona en peligro
-        if (lastAlert.lat && lastAlert.lng) {
-          L.circleMarker([lastAlert.lat, lastAlert.lng], {
-            radius: 8,
-            color: '#b71c1c',
-            fillColor: '#d32f2f',
-            fillOpacity: 0.9,
-            weight: 1
-          }).addTo(map).bindPopup(lastAlert.headline || "Zona en peligro");
-        }
-
-        // Marcadores verdes: zonas seguras
-        if (lastAlert.safe_places) {
-          lastAlert.safe_places.forEach(p => {
-            if (p.lat && p.lng) {
-              L.circleMarker([p.lat, p.lng], {
-                radius: 7,
-                color: '#1b5e20',
-                fillColor: '#2e7d32',
-                fillOpacity: 0.9,
-                weight: 1
-              }).addTo(map).bindPopup(p.name || "Zona segura");
-            }
-          });
-        }
+      if (lastAlert && lastAlert.lat && lastAlert.lng) {
+        center = [lastAlert.lat, lastAlert.lng];
+        zoom = 12;
       }
 
-      document.addEventListener("DOMContentLoaded", initMapLeaflet);
-    </script>
-  {% endif %}
+      const map = L.map('map').setView(center, zoom);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(map);
+
+      // Zona en peligro: área roja semitransparente
+      if (lastAlert && lastAlert.lat && lastAlert.lng) {
+        L.circle([lastAlert.lat, lastAlert.lng], {
+          radius: 600,
+          color: '#b71c1c',
+          weight: 2,
+          fillColor: 'rgba(211, 47, 47, 0.25)',
+          fillOpacity: 0.25
+        }).addTo(map).bindPopup(lastAlert.headline || "Zona en peligro");
+      }
+
+      // Zonas seguras: áreas verdes semitransparentes
+      if (lastAlert && lastAlert.safe_places) {
+        lastAlert.safe_places.forEach(p => {
+          if (p.lat && p.lng) {
+            L.circle([p.lat, p.lng], {
+              radius: 400,
+              color: '#1b5e20',
+              weight: 2,
+              fillColor: 'rgba(46, 125, 50, 0.25)',
+              fillOpacity: 0.25
+            }).addTo(map).bindPopup(p.name || "Zona segura");
+          }
+        });
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", initMapLeaflet);
+  </script>
 </body>
 </html>
 """
