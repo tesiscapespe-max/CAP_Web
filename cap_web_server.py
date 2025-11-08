@@ -89,6 +89,7 @@ HTML_PAGE = """
       max-height: 400px;  /* Limita la altura del contenedor */
       overflow-y: auto;   /* Activa el scroll vertical */
       padding-right: 15px; /* Espacio para la barra de desplazamiento */
+      margin-top: 10px;  /* Un poco de espacio superior */
     }
 
     .legend {
@@ -245,7 +246,7 @@ HTML_PAGE = """
             {% endfor %}
           {% else %}
             <div class="empty">
-              (No hay alertas recibidas por el momento. El mapa se actualizará cuando llegue un nuevo mensaje CAP.)
+              (No hay alertas por el momento.)
             </div>
           {% endif %}
         </div>
