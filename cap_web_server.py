@@ -84,6 +84,13 @@ HTML_PAGE = """
       margin-bottom: 10px;
     }
 
+    /* Estilo para el contenedor con scroll de alertas */
+    .alerts-container {
+      max-height: 400px;  /* Limita la altura del contenedor */
+      overflow-y: auto;   /* Activa el scroll vertical */
+      padding-right: 15px; /* Espacio para la barra de desplazamiento */
+    }
+
     .legend {
       background: #ffffff;
       border-radius: 6px;
@@ -151,7 +158,7 @@ HTML_PAGE = """
 
     .empty { font-size: 13px; color: #777; margin-top: 10px; }
 
-    /* Sección adicional (mochila + resumen) */
+    /* Sección adicional: Mochila de emergencia + Resumen del sistema */
     .extra-section {
       max-width: 1100px;
       margin: 0 auto 25px auto;
@@ -219,82 +226,28 @@ HTML_PAGE = """
         <div id="map"></div>
       </div>
       <div class="right">
-        {% if alerts %}
-          {% for a in alerts|reverse %}
-            {% set sev = a['severity_es']|lower %}
-            <div class="alert-card severity-{{ sev }}">
-              <div class="meta">
-                {{ a['timestamp'] }} | <strong>Área:</strong> {{ a['area'] }}
+        <div class="alerts-container">
+          {% if alerts %}
+            {% for a in alerts|reverse %}
+              <div class="alert-card severity-{{ a['severity_es']|lower }}">
+                <div class="meta">
+                  {{ a['timestamp'] }} | <strong>Área:</strong> {{ a['area'] }}
+                </div>
+                <div class="title">{{ a['headline'] }}</div>
+                <div class="desc">{{ a['description'] }}</div>
+                <div class="tags">
+                  <span class="badge badge-urgencia">Urgencia: {{ a['urgency_es'] }}</span>
+                  <span class="badge badge-{{ a['severity_es']|lower }}">
+                    Severidad: {{ a['severity_es'] }}
+                  </span>
+                </div>
               </div>
-              <div class="title">{{ a['headline'] }}</div>
-              <div class="desc">{{ a['description'] }}</div>
-              <div class="tags">
-                <span class="badge badge-urgencia">Urgencia: {{ a['urgency_es'] }}</span>
-                {% if sev == 'extrema' %}
-                  <span class="badge badge-extrema">Severidad: {{ a['severity_es'] }}</span>
-                {% elif sev == 'grave' %}
-                  <span class="badge badge-grave">Severidad: {{ a['severity_es'] }}</span>
-                {% elif sev == 'moderada' %}
-                  <span class="badge badge-moderada">Severidad: {{ a['severity_es'] }}</span>
-                {% elif sev == 'leve' %}
-                  <span class="badge badge-leve">Severidad: {{ a['severity_es'] }}</span>
-                {% else %}
-                  <span class="badge badge-moderada">Severidad: {{ a['severity_es'] }}</span>
-                {% endif %}
-              </div>
+            {% endfor %}
+          {% else %}
+            <div class="empty">
+              (No hay alertas recibidas por el momento. El mapa se actualizará cuando llegue un nuevo mensaje CAP.)
             </div>
-          {% endfor %}
-        {% else %}
-          <div class="empty">
-            (No hay alertas recibidas por el momento. El mapa se actualizará cuando llegue un nuevo mensaje CAP.)
-          </div>
-        {% endif %}
-      </div>
-    </div>
-  </div>
-
-  <!-- Sección adicional: Mochila de emergencia + Resumen del sistema -->
-  <div class="extra-section">
-    <div class="extra-row">
-      <div class="extra-left">
-        <div class="card-box">
-          <h3>Mochila de emergencia recomendada</h3>
-          <p>Ante terremotos, inundaciones u otros desastres es recomendable contar con una mochila lista para 72 horas. Algunos elementos básicos son:</p>
-          <ul>
-            <li>Agua potable (mínimo 2&nbsp;L por persona por día)</li>
-            <li>Alimentos no perecibles (enlatados, barras energéticas)</li>
-            <li>Linterna y pilas de repuesto</li>
-            <li>Radio portátil a pilas</li>
-            <li>Botiquín de primeros auxilios y medicamentos personales</li>
-            <li>Copias de documentos importantes en bolsa plástica</li>
-            <li>Gel antibacterial, mascarillas y elementos de higiene</li>
-            <li>Ropa abrigada, poncho de agua y manta ligera</li>
-            <li>Silbato, encendedor o fósforos resistentes al agua</li>
-          </ul>
-        </div>
-      </div>
-      <div class="extra-right">
-        <div class="card-box">
-          <h3>Resumen del sistema de alertas</h3>
-          <ul>
-            <li><strong>Total de alertas recibidas:</strong> {{ alerts|length }}</li>
-            {% if alerts %}
-              <li><strong>Lugar de peligro:</strong> {{ alerts[-1]['area'] }}</li>
-              <li><strong>Último evento:</strong> {{ alerts[-1]['headline'] }}</li>
-              <li><strong>Severidad:</strong> {{ alerts[-1]['severity_es'] }}</li>
-              <li><strong>Urgencia:</strong> {{ alerts[-1]['urgency_es'] }}</li>
-              <li><strong>Fecha y hora de recepción:</strong> {{ alerts[-1]['timestamp'] }}</li>
-              {% if alerts[-1]['safe_places'] %}
-                <li>
-                  <strong>Lugar(es) seguro(s):</strong>
-                  {% for p in alerts[-1]['safe_places'] %}
-                    {{ p['name'] }}{% if not loop.last %}, {% endif %}
-                  {% endfor %}
-                </li>
-              {% endif %}
-            {% endif %}
-          </ul>
-          <p>La información se genera a partir de mensajes CAP transmitidos vía plataformas SDR y procesados en el receptor ISDB-T.</p>
+          {% endif %}
         </div>
       </div>
     </div>
@@ -304,19 +257,12 @@ HTML_PAGE = """
     Proyecto de titulación - ESPE | Sistema de transmisión y recepción de mensajes CAP sobre plataformas SDR
   </footer>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-    crossorigin="">
-  </script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script>
     const alerts = {{ alerts | tojson }};
-    let lastAlert = null;
-    if (alerts.length > 0) {
-      lastAlert = alerts[alerts.length - 1];
-    }
+    let lastAlert = alerts.length > 0 ? alerts[alerts.length - 1] : null;
 
     function initMapLeaflet() {
-      // Centro por defecto (Ecuador aprox)
       let center = [-1.0, -78.5];
       let zoom = 6;
 
@@ -327,12 +273,8 @@ HTML_PAGE = """
 
       const map = L.map('map').setView(center, zoom);
 
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '&copy; OpenStreetMap contributors'
-      }).addTo(map);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-      // Zona en peligro: área roja semitransparente
       if (lastAlert && lastAlert.lat && lastAlert.lng) {
         L.circle([lastAlert.lat, lastAlert.lng], {
           radius: 600,
@@ -343,7 +285,6 @@ HTML_PAGE = """
         }).addTo(map).bindPopup(lastAlert.headline || "Zona en peligro");
       }
 
-      // Zonas seguras: áreas verdes semitransparentes
       if (lastAlert && lastAlert.safe_places) {
         lastAlert.safe_places.forEach(p => {
           if (p.lat && p.lng) {
@@ -364,6 +305,7 @@ HTML_PAGE = """
 </body>
 </html>
 """
+
 
 
 # ----------------- Rutas Flask -----------------
