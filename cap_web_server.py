@@ -84,14 +84,6 @@ HTML_PAGE = """
       margin-bottom: 10px;
     }
 
-    /* Estilo para el contenedor con scroll de alertas */
-    .alerts-container {
-      max-height: 400px;  /* Limita la altura del contenedor */
-      overflow-y: auto;   /* Activa el scroll vertical */
-      padding-right: 15px; /* Espacio para la barra de desplazamiento */
-      margin-top: 10px;  /* Un poco de espacio superior */
-    }
-
     .legend {
       background: #ffffff;
       border-radius: 6px;
@@ -159,7 +151,7 @@ HTML_PAGE = """
 
     .empty { font-size: 13px; color: #777; margin-top: 10px; }
 
-    /* Sección adicional: Mochila de emergencia + Resumen del sistema */
+    /* Sección adicional (mochila + resumen) */
     .extra-section {
       max-width: 1100px;
       margin: 0 auto 25px auto;
@@ -199,6 +191,14 @@ HTML_PAGE = """
       font-size: 11px;
       color: #777;
       margin-bottom: 10px;
+    }
+
+    /* Estilo para el contenedor con scroll de alertas */
+    .alerts-container {
+      max-height: 400px;  /* Limita la altura del contenedor */
+      overflow-y: auto;   /* Activa el scroll vertical */
+      padding-right: 15px; /* Espacio para la barra de desplazamiento */
+      margin-top: 10px;  /* Un poco de espacio superior */
     }
   </style>
 </head>
@@ -254,6 +254,53 @@ HTML_PAGE = """
     </div>
   </div>
 
+  <!-- Sección adicional: Mochila de emergencia + Resumen del sistema -->
+  <div class="extra-section">
+    <div class="extra-row">
+      <div class="extra-left">
+        <div class="card-box">
+          <h3>Mochila de emergencia recomendada</h3>
+          <p>Ante terremotos, inundaciones u otros desastres es recomendable contar con una mochila lista para 72 horas. Algunos elementos básicos son:</p>
+          <ul>
+            <li>Agua potable (mínimo 2&nbsp;L por persona por día)</li>
+            <li>Alimentos no perecibles (enlatados, barras energéticas)</li>
+            <li>Linterna y pilas de repuesto</li>
+            <li>Radio portátil a pilas</li>
+            <li>Botiquín de primeros auxilios y medicamentos personales</li>
+            <li>Copias de documentos importantes en bolsa plástica</li>
+            <li>Gel antibacterial, mascarillas y elementos de higiene</li>
+            <li>Ropa abrigada, poncho de agua y manta ligera</li>
+            <li>Silbato, encendedor o fósforos resistentes al agua</li>
+          </ul>
+        </div>
+      </div>
+      <div class="extra-right">
+        <div class="card-box">
+          <h3>Resumen del sistema de alertas</h3>
+          <ul>
+            <li><strong>Total de alertas recibidas:</strong> {{ alerts|length }}</li>
+            {% if alerts %}
+              <li><strong>Lugar de peligro:</strong> {{ alerts[-1]['area'] }}</li>
+              <li><strong>Último evento:</strong> {{ alerts[-1]['headline'] }}</li>
+              <li><strong>Severidad:</strong> {{ alerts[-1]['severity_es'] }}</li>
+              <li><strong>Urgencia:</strong> {{ alerts[-1]['urgency_es'] }}</li>
+              <li><strong>Fecha y hora de recepción:</strong> {{ alerts[-1]['timestamp'] }}</li>
+              {% if alerts[-1]['safe_places'] %}
+                <li>
+                  <strong>Lugar(es) seguro(s):</strong>
+                  {% for p in alerts[-1]['safe_places'] %}
+                    {{ p['name'] }}{% if not loop.last %}, {% endif %}
+                  {% endfor %}
+                </li>
+              {% endif %}
+            {% endif %}
+          </ul>
+          <p>La información se genera a partir de mensajes CAP transmitidos vía plataformas SDR y procesados en el receptor ISDB-T.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <footer>
     Proyecto de titulación - ESPE | Sistema de transmisión y recepción de mensajes CAP sobre plataformas SDR
   </footer>
@@ -261,7 +308,10 @@ HTML_PAGE = """
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script>
     const alerts = {{ alerts | tojson }};
-    let lastAlert = alerts.length > 0 ? alerts[alerts.length - 1] : null;
+    let lastAlert = null;
+    if (alerts.length > 0) {
+      lastAlert = alerts[alerts.length - 1];
+    }
 
     function initMapLeaflet() {
       let center = [-1.0, -78.5];
@@ -274,7 +324,10 @@ HTML_PAGE = """
 
       const map = L.map('map').setView(center, zoom);
 
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(map);
 
       if (lastAlert && lastAlert.lat && lastAlert.lng) {
         L.circle([lastAlert.lat, lastAlert.lng], {
